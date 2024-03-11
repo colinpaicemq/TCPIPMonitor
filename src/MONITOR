@@ -1,0 +1,155 @@
+ // Main routine to capture TCPIP interface statistics and print them out
+ //
+ /**************************************************************
+ MIT License
+ Copyright (c) 2024 Colin Paice
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+ * Contributors:
+ *   Colin Paice - Initial Contribution
+ ************************************************************/
+ #pragma comment (copyright,"Copyright:Colin Paice.  Version 1.1")
+
+ #pragma runopts(POSIX(ON))
+int debug=0;
+  /*Include standard libraries */
+  #define _LARGE_TIME_API
+  #include <time.h>
+  #define _XOPEN_SOURCE_EXTENDED 1
+  #undef _ALL_SOURCE
+  #include <sys/time.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <stdarg.h>
+  #include <printhx.h>
+  #include <EZBNMRHC.h>
+  #define _OPEN_SYS_SOCK_IPV6
+  #include <arpa/inet.h>
+  #include <monprint.h>
+  #include <checknwm.h>
+  #define _POSIX_SOURCE
+  #include <unistd.h>
+//#define PRINTLL(name) printf(#name " %llu\n",p->name);
+//#define PRINTL(name) printf(#name " %lu\n",p->name);
+//#define PRINTS(name) printf(#name " %hu\n",p->name);
+int main( int argc, char *argv??(??))
+{
+  int iSleep = 60;
+  int count =  50;
+  int iArg;
+  int bufferSize = 8192;
+  char * pJobname = "TCPIP";
+  if (argc == 1)
+  {
+    printf("Syntax %s --SLEEP n --COUNT n --TCPIP name\n",argv[0]);
+  }
+  for (iArg = 1;iArg< argc; iArg ++   )
+  {
+    if (strcmp(argv[iArg],"--SLEEP") == 0
+       && iArg + 1 < argc ) // so we have a parm after kw
+    {
+      iSleep     = atoi(argv[iArg+1]);
+      iArg ++;
+      continue;
+    }
+    else
+    if (strcmp(argv[iArg],"--BUFFERSIZE") == 0
+       && iArg + 1 < argc ) // so we have a parm after kw
+    {
+      bufferSize =  atoi(argv[iArg+1]);
+      iArg ++;
+      continue;
+    }
+    else
+    if (strcmp(argv[iArg],"--COUNT") == 0
+       && iArg + 1 < argc ) // so we have a parm after kw
+    {
+      count     = atoi(argv[iArg+1]);
+      iArg ++;
+      continue;
+    }
+    else
+    if (strcmp(argv[iArg],"--TCPIP") == 0
+       && iArg + 1 < argc ) // so we have a rm after kw
+    {
+      pJobname  =      argv[iArg+1] ;
+      if (strlen(pJobname) > 8)
+      {
+        printf("--TCPIP value too long\n");
+        return 8;
+      }
+      iArg ++;
+      continue;
+    }
+  }
+  if (iSleep < 1) iSleep = 10;
+  printf("Using --SLEEP %i --COUNT %i --TCPIP %s\n",
+          iSleep,count,pJobname);
+  char * p;
+  p        =malloc(bufferSize);
+//int NMIlength   ;
+//NMIlength = bufferSize;
+
+  //  Jobname needs to be padded with blanks to 8 chars
+  char JobName[8];
+  memset(&JobName[0],' ',sizeof(JobName));
+  strncpy(&JobName[0],pJobname,strlen(pJobname));
+
+  NWMHeader * pH  ;
+  NWMRecHeader * pRH         ;
+  // address the header over the malloced storage
+  pH = (NWMHeader *)p;
+  // initialise the values
+  pH->NWMHeaderIdent = NWMHEADERIDENTIFIER;
+  pH->NWMHeaderLength= sizeof(NWMHeader);
+  pH->NWMVersion = NWMCURRENTVER;
+  unsigned int RequestResponseBufferAlet = 0;
+
+  int rv=0;
+  int rc =0 ;
+  unsigned int rs = 0;
+  // for as many times as requested
+  for (int iLoop = 0;iLoop < count; iLoop ++)
+  {
+     pH->NWMType    = NWMIFSTATSTYPE; // interface stats
+     NWMServices(JobName,
+           p,
+           &RequestResponseBufferAlet,
+           &bufferSize,
+       &rv,
+       &rc,
+       &rs);
+     checkNWMServices(rv,rc,rs);
+     if (rc != 0) break;
+
+     // the number of records we have in the data
+     int cSections = pH->  NWMOutputDesc. NWMQNumber;
+
+     // point to the output record data within the buffer
+     pRH = (NWMRecHeader * )(p + pH-> NWMOutputDesc.NWMQOffset);
+     int c;
+     for (c=0;c< cSections ;c++)
+     {
+        monprint((char *) pRH,pH-> NWMOutputDesc.NWMQLength);
+        pRH = (NWMRecHeader * )((char *) pRH  +
+                      pH-> NWMOutputDesc.NWMQLength);
+     }  // for section times
+     // now do global stats
+     sleep(iSleep);
+  } // for iLoop times
+}

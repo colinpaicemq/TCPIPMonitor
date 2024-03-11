@@ -1,0 +1,51 @@
+// print the data record from TCPIP monitoring
+//
+/**************************************************************
+MIT License
+Copyright (c) 2024 Colin Paice
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+* Contributors:
+*   Colin Paice - Initial Contribution
+************************************************************/
+// take a number and covert it, if necessary to 10e3 or 10e6
+// the default printf with g migh give you 10e4
+prettyPrint(FILE * hFile,unsigned long long ull)
+{
+  unsigned long long u = ull;
+  char * suffix[] = {"   ","e03","e06","e09","e12"};
+  int i;
+  if ( u < 1000000)
+     fprintf(hFile,"%6.1llu,",u);
+  else
+  {
+    for (i = 0;i <sizeof(suffix);i++)
+    {
+       if (u <=999 ) break ;
+       u = u/1000;
+    }
+    fprintf(hFile,"%3llu%3s,",u,suffix[i]);
+  }
+}
+#include <IFST.h>
+int monprint(char * pData, int lData)
+{
+  if (memcmp(pData,"NWMIFST ",8) == 0)
+  IFST(pData,lData);
+  else printf("no match \n");
+  return 0;
+}

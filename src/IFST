@@ -1,0 +1,244 @@
+// format an interface statistics block  (IFST)
+// look for existing DDNAME set up
+// Allocate a DDNAME etc
+// format it
+/**************************************************************
+MIT License
+Copyright (c) 2024 Colin Paice
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+* Contributors:
+*   Colin Paice - Initial Contribution
+************************************************************/
+
+#define DIFF(name) (q-> name  - p-> e.name)
+#define FDIFF(name)(double)(q-> name  - p-> e.name)
+
+// structure of our data, these are chained together
+
+struct IFSTData
+{
+    FILE * pHandle;
+    time_t lastTime;
+    struct IFSTData * pNext; // chain of these
+    NWMIfStatsEntry e;       // the data including the iface name
+}          ;
+
+// anchor for the chain of IFSTData blocks
+struct IFSTData * pIFSTData = 0;
+
+///////////////////////////////////////////////////////
+// Look through the existing blocks searching for
+// matching interface name,
+// if found return it
+// else return 0
+struct IFSTData * IFSTGetHandle(char * pData)
+{
+   struct IFSTData * p;
+   NWMIfStatsEntry * pN;
+   pN = (NWMIfStatsEntry *) pData;
+   for ( p = pIFSTData; p != 0;p= p->pNext)
+   {
+      // loop through finding the matching interface
+     int c =  memcmp(&pN->NWMIfStName,&p->e.NWMIfStName,
+              sizeof(p->e.NWMIfStName));
+     if ( c ==0)  // match
+       break;
+   }
+   return p;
+}
+//
+//  IFSTAllocHandle
+//
+//  No maching interface was found, allocate a record
+//  and chain it off the anchor.
+//  open the ddname
+//
+struct IFSTData * IFSTAllocHandle(char * pData)
+{
+   NWMIfStatsEntry * pN;
+   pN = (NWMIfStatsEntry *) pData; // so we can reference field
+// struct IFSTData * q;    // for chaining through existing
+   struct IFSTData * p = malloc(sizeof(struct IFSTData));
+   if (p == 0)
+   {
+     fprintf(stderr,"malloc failed\n");
+     return 0;
+   }
+   memset(p,0,sizeof(struct IFSTData));
+   // calculate which number ddname to use
+   // by counting how many we already have
+   int i = 1;
+   for (struct IFSTData * q = pIFSTData; q!= 0;q= q->pNext)
+   {
+      i ++;
+   }
+   // create //INTF1, //INTF2 et
+   char ddname[8];
+   sprintf(&ddname[0],"DD:INTF%u\0",i);
+   // open the ddname - if not present we get back 0
+   p->pHandle = fopen(ddname,"w");
+   // if not found use //SYSPRINT instead
+   if (p->pHandle == 0)
+   {
+     char outMsg[30];
+     sprintf(&outMsg[0],"Error opening DD:INTF%u\n\0",i);
+     perror(outMsg );
+     p->pHandle = stdout;
+   }
+   // print the file header
+   fprintf(p->pHandle,
+            "Interface       ,HH:MM:SS,"
+            "IBytes,OBytes,IB/sec,OB/sec,,"
+            "IUP   ,OUP   ,, "
+            "IMP, OMP, IBP, OBP, InE, OuE, InD, OuD\n");
+   // copy the data
+   memcpy(&p->e,pData,sizeof(p->e));
+   // chain it in
+   p->pNext =  pIFSTData;
+   pIFSTData = p; // set the anchor
+
+   //
+   // print out the data, summary data goes to sysprint
+   //
+   printf("Interface %16.16s ",pN-> NWMIfStName);
+   if ((pN -> NWMIfStFlags  & NWMIFSTIPV6)  == NWMIFSTIPV6 )
+     printf("IPV6 ");
+
+   char * pType;
+   #define IFTYPE(n,v) case n: pType= #v;break;
+   switch (pN ->  NWMIfStType)
+   {
+     IFTYPE(1, Loopback                     )
+     IFTYPE(2, OSA-Express QDIO ethernet OSD)
+     IFTYPE(3, OSA-Express QDIO ethernet OSM)
+     IFTYPE(4, OSA-Express QDIO ethernet OSX)
+     IFTYPE(5, HiperSocket                  )
+     IFTYPE(6, MPC point-to-point: Uses channels for connectivity)
+     IFTYPE(7, MPC point-to-point Samehost )
+      IFTYPE(8, \
+         MPC point-to-point XCF: Uses XCF services for connectivity)
+     IFTYPE(26, HiperSockets IQDX)
+     IFTYPE(29, HiperSockets IQDC)
+     default: pType = "Unknown";
+   }
+   printf("type: %s\n",pType);
+
+   switch (pN ->  NWMIfStDDPStatus)
+   {
+     IFTYPE(1 , Starting    )
+     IFTYPE(2 , Sent setup  )
+     IFTYPE(3 , Enabling    )
+     IFTYPE(4 , Connecting  )
+     IFTYPE(5 , Connecting2 )
+     IFTYPE(6 , Negotiating )
+     IFTYPE(7 , Active      )
+     IFTYPE(8 , Deactivating)
+     IFTYPE(9 , Not active  )
+   default: pType = "Unknown";
+   }
+   printf("  Device status   : %s\n",pType);
+
+   switch (pN ->  NWMIfStIntfStatus)
+   {
+   IFTYPE(1 , Active        )
+   IFTYPE(2 , Not active    )
+   IFTYPE(3 , Duplicate address detection -DAD- pending)
+   default: pType = "Unknown";
+   }
+   printf("  Interface status: %s",pType);
+
+   printf("\n");
+   return p;
+}
+//
+// main formatting routine
+//
+int IFST(char * pData,int lData)
+{
+    struct IFSTData * p; // our ddname record
+    NWMIfStatsEntry * q ;
+    q = (NWMIfStatsEntry *) pData; // input record
+    // get the ddname file handle
+    p = IFSTGetHandle(pData);
+    // if first time p = 0, so allocate it
+    if (p == 0)
+    {
+       p =  IFSTAllocHandle(pData);
+       if  (p ==0) return;
+    }
+    char * pName  =(char *)  &p->e.NWMIfStName ;
+
+    // use f as shorthard symbol for the output file
+    FILE * f = p->pHandle;
+
+    // write the interface name
+    fprintf(f         , "%16.16s,",pName);
+
+    // we need the time now
+    struct tm *pTime  ;
+    time_t timeNow;
+    timeNow = time(NULL); // get time now
+    pTime   = localtime(&timeNow); // and convert
+    char printTime[10];
+    strftime(printTime,sizeof(printTime)-1,"%H:%M:%S,",pTime);
+
+    // if the stats were not reset then print them out
+    if (q->NWMIfStResetTime  == p-> e.NWMIfStResetTime )
+    {
+      fprintf(f         , "%8.8s,",printTime);
+      prettyPrint(f,DIFF(NWMIfStInBytes));
+      prettyPrint(f,DIFF(NWMIfStOutBytes  ));
+      // calculate byte rates/second
+      if ( p->lastTime  != 0)
+      {
+        int duration = timeNow - p->lastTime;
+        // input bytes/second
+        unsigned long long rate = DIFF(NWMIfStInBytes)/duration;
+        prettyPrint(f,rate);
+        // output bytes/second
+        rate = DIFF(NWMIfStOutBytes )/duration;
+        prettyPrint(f,rate);
+      }
+      else // omit the data
+      {
+        fprintf(f,"      ,");
+        fprintf(f,"      ,");
+      }
+      fprintf(f,",");     // use ,, as a marker to help line up the data
+      prettyPrint(f,DIFF(NWMIfStInUcastPkts  ));
+      prettyPrint(f,DIFF(NWMIfStOutUcastPkts ));
+      fprintf(f,",");
+      fprintf(f,"%4g,",FDIFF(NWMIfStInMcastPkts));
+      fprintf(f,"%4g,",FDIFF(NWMIfStOutMcastPkts  ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStInBcastPkts   ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStOutBcastPkts  ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStInErrors      ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStOutErrors     ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStInDiscards    ));
+      fprintf(f,"%4g,",FDIFF(NWMIfStOutDiscards   ));
+      fprintf(f,"\n");
+    }
+    else
+    {
+       fprintf(f,"statistics reset\n") ;
+    }
+    // save the data for next time
+    memcpy(&p->e,q, sizeof(p->e));
+    memcpy(&p->lastTime,&timeNow,sizeof(timeNow));
+    return 0;
+  }
