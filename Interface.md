@@ -155,9 +155,10 @@ tso receive indsn('myid.TCPMON.LOAD.XMIT')
 ``` 
 You can then copy the load module to an APF authorised library, or APF authorise the library using a command like
 
-SETPROG APF,ADD,DSN=myid.TCPMON.LOAD.XMIT,VOL=......
+SETPROG APF,ADD,DSN=myid.TCPMON.LOAD,VOL=......
 
 # Change history
 2024 Feb 24: Version 1.0.  Original version
+2024 April22: Small changes to the text.
 
 

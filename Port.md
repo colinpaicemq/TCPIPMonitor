@@ -1,5 +1,5 @@
 # Port statistics
-Displays information about connections to a port.  It displays TCPIP parameters such as window size and buffer size, which affect the performance of a session.
+Displays information about connections to a port.  It displays TCPIP parameters such as bytes processed; window size and buffer size, which affect the performance of a session.
 
 ## Example output
 ### SYSPRINT
@@ -24,13 +24,71 @@ The first time a connection is seen, it displays information about the connectio
 2001:7::3:43736       RcvBufSize: 65536           RcvWnd:131020  Lcl0WindowCount:     0  Rmt0WindowCount:     0      
 2001:7::3:43736                                                                                                      
 ```
+
+Where the value are (from TCPIP.SEZANMAC(EZBNMRHC))
+
+ResourceId
+: Resource ID is the numeric identification of this resource. This value is also known as the 
+connection ID. 
+
+InSegs
+: Input TCP segments received,including those received in error.
+
+OutSegs
+: Output TCP segments sent.
+
+SSThresh
+: Slow start threshold.
+
+OutBuffered
+: Number of outgoing bytes buffered
+
+InBuffered
+:  Number of incoming bytes buffered.
+
+ReXmtCount
+: Number of times segments have been retransmitted.
+
+CongestionWnd
+: Congestion window size
+
+RoundTripTime
+: The amount of time that has elapsed, in millisecondsd, from when the last TCP segment was transmitted by the TCP stack until the ACK was received.
+
+RoundTripVar
+: Round trip time variance.
+
+SndBufSize
+:Send buffer size.
+
+SndWnd
+: Send Window size.
+
+MaxSndWnd
+: Maximum send window size.
+
+SendMSS
+: Maximum Segment Size we can send.
+
+RcvBufSize
+: Receive buffer size.
+
+RcvWnd
+: Receive Window size.
+
+Lcl0WindowCount
+: The number of times local window size set to 0
+
+Rmt0WindowCount
+: The number of times remote window size set to 0.
+
 ### Change
 If the TCPIP information changes, it reports the before and after values
 ```
-17:09:50 2001:7::3:43736  NWMConnCongestionWnd n:64260 - o:48552 = 15708                
-17:09:50 2001:7::3:43736  NWMConnRoundTripVar n:2 - o:4 = -2                            
-17:10:00 2001:7::3:43736  NWMConnCongestionWnd n:65688 - o:64260 = 1428                 
-17:10:10 2001:7::3:43736  NWMConnRoundTripVar n:1 - o:2 = -1                            
+17:09:50 2001:7::3:43736  NWMConnCongestionWnd n:64260 - o:48552 = 15708
+17:09:50 2001:7::3:43736  NWMConnRoundTripVar n:2 - o:4 = -2
+17:10:00 2001:7::3:43736  NWMConnCongestionWnd n:65688 - o:64260 = 1428
+17:10:10 2001:7::3:43736  NWMConnRoundTripVar n:1 - o:2 = -1
 ```
 At 17:09:50 for the session, 
 
@@ -95,7 +153,7 @@ tso receive indsn('myid.TCPMON.LOAD.XMIT')
 ``` 
 You can then copy the load module to an APF authorised library, or APF authorise the library using a command like
 
-SETPROG APF,ADD,DSN=myid.TCPMON.LOAD.XMIT,VOL=......
+SETPROG APF,ADD,DSN=myid.TCPMON.LOAD,VOL=......
 
 # Change history
 2024 April 22: Version 1.0.  Original version
