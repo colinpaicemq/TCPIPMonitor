@@ -105,7 +105,7 @@ It shows if the interface is IPV6, gives its type, and status.
 ```
 //COLINC5    JOB 1,MSGCLASS=H 
 //* The LOADLIB must be APF authorised 
-// SET LOADLIB=COLIN.LOAD 
+// SET LOADLIB=COLIN.TCPMON.LOAD
 //RUN      EXEC PGM=TCPMON,REGION=0M,PARMDD=MYPARMS 
 //STEPLIB  DD DISP=SHR,DSN=&LOADLIB 
 //SYSPRINT DD SYSOUT=* 

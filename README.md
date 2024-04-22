@@ -28,11 +28,11 @@ TAP0            ,09:12:42,     0,     0,     0,     0,,     0,     0,,   0,   0,
 
 The two entries, Input Bytes per second,and OutputBytes a second are rates per second.  The other values are deltas from the previous time interval.
 
-##Port statistics {port}
+## Port statistics {port}
 
 Displays information about connections to a port.  It displays TCPIP parameters such as window size and buffer size, which affect the performance of a session.
 
-##Example output
+## Example output
 ### SYSPRINT
 This gives the transmission rates in Bytes In, Bytes out, Segments in, Segments out, Bytes In per second, Bytes Out per second, and retransmit count.
 It provides this information every --sleep seconds, for --count times
