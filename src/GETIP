@@ -1,0 +1,86 @@
+// getip.  Decode the ip address
+// it can be 10.1.1.2 10.1.1.2/16 or 2001:1::7 or 2001:1::/64
+/**************************************************************
+MIT License
+Copyright (c) 2024 Colin Paice
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+* Contributors:
+*   Colin Paice - Initial Contribution
+************************************************************/
+int  getIP(char * pIn, struct sockaddr_in6 * pip6, short * prefix)
+{
+  * prefix = 0;
+  int locPrefix = 0;
+  memset(pip6,0,sizeof(struct  sockaddr_in6));
+  int rc;
+  // overlay ipv4 structure on top of ip v6
+  char * pC  = strdup(pIn);
+  // look for / in the IP address which gives prefix value
+  char * slash = strchr(pC,'/');
+  if (slash != 0)
+  {
+    locPrefix = atoi(slash+1);
+    * slash = 0; // replace / with null to end the ip address
+  }
+  // now do IPV4 address
+  struct sockaddr_in * pip=(struct sockaddr_in * ) pip6;
+  rc = inet_pton(AF_INET,pC,&pip->sin_addr.s_addr);
+  if (rc == 1)     // valid
+  {
+    printf("Remote IP V4 %s.\n",pC );
+//  IPType = 4;
+    pip->  sin_family=AF_INET;
+    if (locPrefix > 32)
+    {
+       printf("Prefix %i is too large for IPV4\n",locPrefix);
+       rc = 8;
+    }
+    else rc = 0;
+  }
+  else
+  {
+    rc = inet_pton(AF_INET6,pC,
+                  pip6-> sin6_addr.s6_addr);
+    switch (rc)
+    {
+       case 1: // it worked
+         printf("Remote IP V6 %s.\n",pC         );
+//       IPType = 6;
+         pip6 ->     sin6_family=AF_INET6;
+         if (locPrefix > 128)
+         {
+           printf("Prefix %i is too large for IPV6\n",locPrefix);
+           rc = 8;
+         }
+         else rc = 0;
+         break;
+       case 0:
+         printf("Invalid IP address %s\n",pC);
+         rc = 8;
+         break;
+       default:
+         perror("From inet_pton:");
+         printf("Bad IP address %s\n",pC  );
+         rc = 8  ;
+         break;
+    }
+  }
+  *prefix = locPrefix ; // convert /64 to internal
+//printHex(stdout,pip6, sizeof(struct sockaddr_in6));
+  return rc;
+}

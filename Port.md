@@ -1,35 +1,4 @@
-# TCPIPMonitor
-This repository contains code for z/OS to monitor TCPIP.  It provides
-
-1. [Interface statistics](Interface.md) - periodically it displays the number of bytes etc processed by the interface
-2. [Port statistics](Port.md) - bytes processed for connections to a port, along with TCPIP parameers such as window size, and buffer size
-
-
-##Interface statistics {interface}
-Creates real time statistics for TCPIP Interfaces on z/OS.  It shows what happened in the previous n seconds.   The TCPIP statistics are cumulative.   This program calculates the delta values from the previous time.
-
-You can download the output files to your PC, and us a spread sheet to display the data in a graphical format.
-
-
-## Example output
-```
-Interface       ,HH:MM:SS,IBytes,OBytes,IB/sec,OB/sec,,IUP   ,OUP   ,, IMP, OMP, IBP, OBP, InE, OuE, InD, OuD 
-TAP0            ,09:11:12,     0,     0,      ,      ,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:11:22,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:11:32,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:11:42,   348,   348,    34,    34,,     3,     3,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:11:52,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:12:02,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:12:12,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:12:22,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:12:32,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-TAP0            ,09:12:42,     0,     0,     0,     0,,     0,     0,,   0,   0,   0,   0,   0,   0,   0,   0, 
-```
-
-The two entries, Input Bytes per second,and OutputBytes a second are rates per second.  The other values are deltas from the previous time interval.
-
-##Port statistics {port}
-
+# Port statistics
 Displays information about connections to a port.  It displays TCPIP parameters such as window size and buffer size, which affect the performance of a session.
 
 ##Example output
@@ -63,3 +32,71 @@ If the TCPIP information changes, it reports the before and after values
 17:10:00 2001:7::3:43736  NWMConnCongestionWnd n:65688 - o:64260 = 1428                 
 17:10:10 2001:7::3:43736  NWMConnRoundTripVar n:1 - o:2 = -1                            
 ```
+At 17:09:50 for the session, 
+
+- the Connection Congestion Window changed from the old value o:48552, to the new value n:64260, a delta of 15708
+- The Connection Round Trip variance changed from the old value o:4 to the new value n:2 a difference of 2.
+
+## JCL to execute the program
+The load library must be APF authorised.
+
+```
+//COLINCPO   JOB 1,MSGCLASS=H,COND=(4,LE)
+// SET LOADLIB=COLIN.LOAD 
+//RUN      EXEC PGM=MONPORT,REGION=0M,PARMDD=MYPARMS 
+//STEPLIB  DD DISP=SHR,DSN=&LOADLIB 
+//SYSPRINT DD SYSOUT=*,DCB=(LRECL=200) 
+//SYSOUT   DD SYSOUT=* 
+//SYSERR   DD SYSOUT=* 
+//INFO     DD SYSOUT=* 
+//CHANGE   DD SYSOUT=* 
+//MYPARMS DD * 
+ / 
+  --SLEEP 10 
+  --COUNT 50 
+  --PORT 21 
+  --IP 2001:db8::/200 
+                                                                       
+/* 
+  --TCPIP TCPIP
+```
+
+## Parameters
+Where the parameters are (in upper case):
+
+--SLEEP nnn
+: How many seconds to sleep between iterations.  It defaults to 60 seconds.
+
+--COUNT nnn
+: How many times to iterate it defaults to 50.
+
+--TCPIP TCPIP
+: The name of the TCPIP stack to use - defaults to TCPIP
+
+--PORT  nnn
+: The port on the z/OS system
+
+--IP address
+: The IP address (range) for the remote end of the connection.  For example 
+10.1.1.1, 192.168.1.0/8,  2001:1::/64
+
+
+
+## Installation
+FTP the load/COLIN.TCPMON.LOAD.XMIT to z/OS.  For example using
+```
+site quote  cyl pri=1 recfm=fb blksize=800 lrecl=80
+bin
+put COLIN.TCPMON.LOAD.XMIT 'myid.TCPMON.LOAD.XMIT'
+```
+then use
+```
+tso receive indsn('myid.TCPMON.LOAD.XMIT')
+``` 
+You can then copy the load module to an APF authorised library, or APF authorise the library using a command like
+
+SETPROG APF,ADD,DSN=myid.TCPMON.LOAD.XMIT,VOL=......
+
+# Change history
+2024 April 22: Version 1.0.  Original version
+

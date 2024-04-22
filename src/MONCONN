@@ -1,0 +1,277 @@
+// format an connection stats block    (NWMC)
+// look for existing DDNAME set up
+// Allocate a DDNAME etc
+// format it
+/**************************************************************
+MIT License
+Copyright (c) 2024 Colin Paice
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+* Contributors:
+*   Colin Paice - Initial Contribution
+************************************************************/
+
+#define _OPEN_SYS_SOCK_IPV6
+#include <arpa/inet.h>
+
+#include <PRETTYPR.h>
+
+#define DIFF(name) (q-> name  - p-> e.name)
+#define FDIFF(name)(double)(q-> name  - p-> e.name)
+#define ZPRINT(name) printf(#name "  %u\n",pN -> name)
+#define UPRINT(name) \
+   {char * pText = #name; \
+    fprintf(f,"%16s:%6u ",pText+7, pN -> name);\
+   }
+#define BREAK fprintf(f,"\n%s", p -> prefix);
+#define PREFIX  printf("%s:%u",outIPBuffer,port);
+
+//  my information about a connection
+struct ConnData
+{
+    time_t lastTime;
+    struct ConnData * pNext; // chain of these
+    NWMConnEntry    e;       // the data including the iface name
+    char prefix[INET6_ADDRSTRLEN+ 8];
+}          ;
+// anchor for the chain of  ConnData blocks
+struct ConnData * pConnData = 0;
+//
+// Find the connData structure matchin the input record
+struct ConnData  * findConn(char * pData)
+{
+   struct ConnData * p;
+   NWMConnEntry    * pN;
+   pN = (NWMConnEntry    *) pData;
+   for ( p = pConnData; p != 0;p= p->pNext)
+   {
+      // loop through finding the matching session
+     int c =
+         // NWMConnRemote  is The remote IP address and port
+         memcmp( &p -> e.NWMConnRemote,
+                 &pN -> NWMConnRemote,
+                 sizeof(p->e.NWMConnRemote));
+     if ( c ==0)  // match
+       break;
+   }
+   return p;
+}
+//  addConn
+//
+//  No maching connection was found, allocate a record
+//  and chain it off the anchor.
+//  open the ddname if not already open
+//
+struct ConnData * addConn(char * pData)
+{
+   int port;
+   FILE * f = fINFO ;   // short hand for the file
+   NWMConnEntry    * pN;
+   pN = (NWMConnEntry *) pData; // so we can reference field
+
+   // allocate it
+   struct ConnData * p = malloc(sizeof(struct ConnData));
+   if (p == 0)
+   {
+     fprintf(stderr,"malloc failed\n");
+     return 0;
+   }
+   memset(p,0,sizeof(struct ConnData));
+   memcpy(&p->e,pData,sizeof(p->e));
+   char outIPBuffer[INET6_ADDRSTRLEN];
+   // convert an IP v4 to printable
+// inet_ntop(AF_INET ,
+//       &pN->NWMConnRemote.NWMConnRemoteAddr4.sin_addr.s_addr,
+//       &outIPBuffer[0],
+//       sizeof(outIPBuffer));
+   // if it is IP V4
+   if (pN->NWMConnRemote.NWMConnRemoteAddr4.sin_family == AF_INET)
+// if (pN->NWMConnRemote.NWMConnRemoteAddr4.sin_addr.s_addr
+//     != 0 )
+   {
+      port = pN->NWMConnRemote.NWMConnRemoteAddr4.sin_port;
+      inet_ntop(AF_INET ,
+         &pN->NWMConnRemote.NWMConnRemoteAddr4.sin_addr.s_addr,
+         &outIPBuffer[0],
+         sizeof(outIPBuffer));
+    }
+    else
+   // convert an IP v6 to printable
+    {
+      port = pN->NWMConnRemote.NWMConnRemoteAddr6.sin6_port;
+      inet_ntop(AF_INET6,
+         &pN->NWMConnRemote.NWMConnRemoteAddr6.sin6_addr.s6_addr,
+         &outIPBuffer[0],
+         sizeof(outIPBuffer));
+    }
+
+    // start printing out the data
+    sprintf(&p -> prefix[0],"%s:%u \0",outIPBuffer,port);
+    fprintf(f,"\n%s", p -> prefix);
+    fprintf(f, " JOBNAME %8.8s ",pN -> NWMConnResourceName);
+    fprintf(f," Interface %16.16s",pN -> NWMConnIntfName   );
+    // now the fields
+    BREAK
+    UPRINT(NWMConnResourceId      );
+    UPRINT(NWMConnInSegs          );
+    UPRINT(NWMConnOutSegs         );
+    UPRINT(NWMConnSSThresh        );
+    BREAK
+    UPRINT(NWMConnOutBuffered     );
+    UPRINT(NWMConnInBuffered      );
+    BREAK;
+    UPRINT(NWMConnReXmtCount      );
+    UPRINT(NWMConnCongestionWnd   );
+    UPRINT(NWMConnRoundTripTime   );
+    UPRINT(NWMConnRoundTripVar    );
+    BREAK;
+    UPRINT(NWMConnSndBufSize      );
+    UPRINT(NWMConnSndWnd          );
+    UPRINT(NWMConnMaxSndWnd       );
+    UPRINT(NWMConnSendMSS         );
+    BREAK;
+    UPRINT(NWMConnRcvBufSize      );
+    UPRINT(NWMConnRcvWnd          );
+    UPRINT(NWMConnLcl0WindowCount );
+    UPRINT(NWMConnRmt0WindowCount );
+    BREAK;
+    fprintf(f,"\n");
+   // chain it in
+   p->pNext =  pConnData;
+   pConnData = p; // set the anchor
+   return p;
+}
+//////////////////////////////
+// the CHANGE macro is used to compare before and after values
+// and print out if the changed.
+#define CHANGE(name,how) {          int delta;           \
+        delta = q->name - p->e.name; \
+        if ( delta how  0) pOK = "OK"; \
+        else pOK= "!OK";  \
+        pOK = " "; \
+        if (delta  != 0 ) \
+        fprintf(fCHANGE,"%s %s "#name " n:%i - o:%i = %i %s\n", \
+        printTime, p-> prefix, q->name,  p->e.name,\
+        delta,pOK );    \
+        }
+//////////////////////////////
+int MONCONN(char * pData,int lData)
+{
+    NWMConnEntry    * q = (NWMConnEntry    *) pData;
+    struct tm *pTime  ;
+    FILE * f = stdout;
+    struct ConnData * p;
+    q = (NWMConnEntry    *) pData; // input record
+    //  get the time now
+    time_t timeNow;
+    timeNow = time(NULL); // get time now
+    pTime   = localtime(&timeNow); // and convert
+    char printTime[10];
+    strftime(printTime,sizeof(printTime)-1,"%H:%M:%S,",pTime);
+
+    p = 0;
+    p = findConn(pData);
+    // if first time p = 0, allocate it
+    if (p == 0)
+    {
+       p =  addConn(pData);
+       if  (p ==0) return;
+       memcpy(&p->e,q, sizeof(p->e));
+       memcpy(&p->lastTime,&timeNow,sizeof(timeNow));
+       return;  // we do not print any data out
+    }
+    // second and later attempts
+    printf("%s,",printTime);
+    printf("%-20s,",p -> prefix);
+    prettyPrint(f,DIFF(NWMConnBytesIn  ));
+    prettyPrint(f,DIFF(NWMConnBytesOut ));
+    printf(",");
+    prettyPrint(f,DIFF(NWMConnInSegs   ));
+    prettyPrint(f,DIFF(NWMConnOutSegs   ));
+    printf(",");
+    int duration = timeNow - p->lastTime;
+    if ( duration   > 0   )
+    {
+       // input bytes/second
+       unsigned long long rate = DIFF(NWMConnBytesIn)/duration;
+       prettyPrint(stdout,rate);
+       // output bytes/second
+       rate = DIFF(NWMConnBytesOut )/duration;
+       prettyPrint(stdout,rate);
+       printf(",");
+    }
+     else // omit the data
+     {
+       fprintf(f,"      ,");
+       fprintf(f,"      ,");
+     }
+    prettyPrint(f,DIFF(NWMConnReXmtCount));
+
+//  printf("%s\n",outIPBuffer);
+    char * pOK;
+    CHANGE(NWMConnReXmtCount   ,> );
+    CHANGE(NWMConnCongestionWnd,< );
+    CHANGE(NWMConnRoundTripTime,> );
+    CHANGE(NWMConnRoundTripVar ,> );
+    CHANGE(NWMConnSndBufSize   ,< );
+    CHANGE(NWMConnSndWnd       ,< );
+    CHANGE(NWMConnMaxSndWnd    ,< );
+    CHANGE(NWMConnSendMSS      ,> );
+    CHANGE(NWMConnRcvBufSize   ,> );
+    CHANGE(NWMConnRcvWnd         ,> );
+    CHANGE(NWMConnLcl0WindowCount,> );
+    CHANGE(NWMConnRmt0WindowCount,> );
+    CHANGE(NWMConnReXmtCount     ,> );
+
+
+    printf("\n");
+    memcpy(&p->e,q, sizeof(p->e));
+    memcpy(&p->lastTime,&timeNow,sizeof(timeNow));
+    return 0;
+  }
+/////////////////////////
+// iterate over the elements adding valid to a new chain
+// and deleting old ones
+// then resetting the chain pointer
+void MONCONNClear( time_t timeNow)
+{
+   struct ConnData * pStart = 0;
+   struct ConnData * p;
+   struct ConnData * p2;
+   struct ConnData * pNext;
+   int i = 0;
+   for ( p = pConnData; p != 0;           )
+   {
+     i ++;
+     if (i> 9999) break;   // safety value
+     pNext = p -> pNext;
+     if (p -> lastTime < timeNow) // was not present so delete it
+     {
+       printf("Freeing entry %s\n",p -> prefix);
+       free((char * ) p );
+       p = pNext;
+     }
+     else // add to the new chaan
+     {
+       p2 = p;
+       p = p-> pNext;
+       p2 -> pNext = pStart;
+       pStart = p2;
+     }
+  }
+  pConnData = pStart;
+}

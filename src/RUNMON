@@ -17,8 +17,8 @@
 //INTF9    DD SYSOUT=*
 //MYPARMS DD *
  /
+  --SLEEP 10
+  --COUNT 10
 /*
-  --SLEEP 60
-  --COUNT 50
  --TCPIP TCPIP2
 //

@@ -232,6 +232,7 @@ int IFST(char * pData,int lData)
       fprintf(f,"%4g,",FDIFF(NWMIfStInDiscards    ));
       fprintf(f,"%4g,",FDIFF(NWMIfStOutDiscards   ));
       fprintf(f,"\n");
+//    fprintf(f,"NWMIfStOutDiscards %i\n", q-> NWMIfStOutDiscards);
     }
     else
     {

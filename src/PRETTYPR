@@ -1,0 +1,17 @@
+prettyPrint(FILE * hFile,unsigned long long ull)
+{
+  unsigned long long u = ull;
+  char * suffix[] = {"   ","e03","e06","e09","e12"};
+  int i;
+  if ( u < 1000000)
+     fprintf(hFile,"%6.1llu,",u);
+  else
+  {
+    for (i = 0;i <sizeof(suffix);i++)
+    {
+       if (u <=999 ) break ;
+       u = u/1000;
+    }
+    fprintf(hFile,"%3llu%3s,",u,suffix[i]);
+  }
+}

@@ -37,6 +37,9 @@ void checkNWMServices(int rv, int rc, int rs)
       case 0x051B:
         printf("Could not find the TCPIP stack\n");
         break;
+      case 0x7314:
+        printf("A problem occurred with the input\n");
+        break;
     }
   }
 }
