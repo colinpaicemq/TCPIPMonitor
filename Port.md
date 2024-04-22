@@ -55,7 +55,7 @@ The load library must be APF authorised.
   --SLEEP 10 
   --COUNT 50 
   --PORT 21 
-  --IP 2001:db8::/200 
+  --IP 2001:db8::/64 
                                                                        
 /* 
   --TCPIP TCPIP
