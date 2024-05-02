@@ -5,7 +5,7 @@ This repository contains code for z/OS to monitor TCPIP.  It provides
 2. [Port statistics](Port.md) - bytes processed for connections to a port, along with TCPIP parameers such as window size, and buffer size
 
 
-##Interface statistics {interface}
+## Interface statistics {interface}
 Creates real time statistics for TCPIP Interfaces on z/OS.  It shows what happened in the previous n seconds.   The TCPIP statistics are cumulative.   This program calculates the delta values from the previous time.
 
 You can download the output files to your PC, and us a spread sheet to display the data in a graphical format.
