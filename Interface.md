@@ -158,7 +158,9 @@ You can then copy the load module to an APF authorised library, or APF authorise
 SETPROG APF,ADD,DSN=myid.TCPMON.LOAD,VOL=......
 
 # Change history
+
 2024 Feb 24: Version 1.0.  Original version
+
 2024 April22: Small changes to the text.
 
 

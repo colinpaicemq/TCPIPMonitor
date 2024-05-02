@@ -5,7 +5,8 @@ This repository contains code for z/OS to monitor TCPIP.  It provides
 2. [Port statistics](Port.md) - bytes processed for connections to a port, along with TCPIP parameers such as window size, and buffer size
 
 
-## Interface statistics (interface.md)
+## Interface statistics
+See [Interface statistics](interface.md).
 Creates real time statistics for TCPIP Interfaces on z/OS.  It shows what happened in the previous n seconds.   The TCPIP statistics are cumulative.   This program calculates the delta values from the previous time.
 
 You can download the output files to your PC, and us a spread sheet to display the data in a graphical format.
@@ -28,7 +29,8 @@ TAP0            ,09:12:42,     0,     0,     0,     0,,     0,     0,,   0,   0,
 
 The two entries, Input Bytes per second,and OutputBytes a second are rates per second.  The other values are deltas from the previous time interval.
 
-## Port statistics {port}
+## Port statistics 
+See  [Port statistics](port.md).
 
 Displays information about connections to a port.  It displays TCPIP parameters such as window size and buffer size, which affect the performance of a session.
 
@@ -63,3 +65,5 @@ If the TCPIP information changes, it reports the before and after values
 17:10:00 2001:7::3:43736  NWMConnCongestionWnd n:65688 - o:64260 = 1428                 
 17:10:10 2001:7::3:43736  NWMConnRoundTripVar n:1 - o:2 = -1                            
 ```
+
+See [One minute networking: TCP buffer sizes](https://colinpaice.blog/2024/04/27/one-minute-networking-tcp-buffer-sizes) for information about the interpretation of the values and setting of TCP buffers.

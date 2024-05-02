@@ -38,7 +38,7 @@ OutSegs
 : Output TCP segments sent.
 
 SSThresh
-: Slow start threshold.
+: Slow start threshold.  Gradually increase the amount of data set
 
 OutBuffered
 : Number of outgoing bytes buffered
@@ -50,13 +50,13 @@ ReXmtCount
 : Number of times segments have been retransmitted.
 
 CongestionWnd
-: Congestion window size
+: Congestion window size - how much data can be in flight. Big is good. 
 
 RoundTripTime
 : The amount of time that has elapsed, in millisecondsd, from when the last TCP segment was transmitted by the TCP stack until the ACK was received.
 
 RoundTripVar
-: Round trip time variance.
+: Round trip time variance. Small is good
 
 SndBufSize
 :Send buffer size.
@@ -65,7 +65,7 @@ SndWnd
 : Send Window size.
 
 MaxSndWnd
-: Maximum send window size.
+: Maximum limit to the send window size.
 
 SendMSS
 : Maximum Segment Size we can send.
@@ -77,10 +77,10 @@ RcvWnd
 : Receive Window size.
 
 Lcl0WindowCount
-: The number of times local window size set to 0
+: The number of times local window size set to 0.  Non 0 is bad 
 
 Rmt0WindowCount
-: The number of times remote window size set to 0.
+: The number of times remote window size set to 0. Non 0 is bad.
 
 ### Change
 If the TCPIP information changes, it reports the before and after values
